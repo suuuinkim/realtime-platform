@@ -1,0 +1,1040 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Realtime Platform</title>
+    <script src="https://cdn.jsdelivr.net/npm/sockjs-client@1/dist/sockjs.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/stompjs@2.3.3/lib/stomp.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+        :root {
+            --purple: #7c3aed;
+            --purple-light: #ede9fe;
+            --purple-mid: #ddd6fe;
+            --purple-dark: #5b21b6;
+            --bg: #f3f0ff;
+            --white: #ffffff;
+            --border: #e5e7eb;
+            --text: #111827;
+            --muted: #6b7280;
+            --faint: #9ca3af;
+            --green: #16a34a;
+            --green-bg: #dcfce7;
+            --red: #dc2626;
+            --red-bg: #fee2e2;
+            --pink: #db2777;
+            --pink-bg: #fce7f3;
+        }
+
+        body {
+            font-family: 'Inter', system-ui, sans-serif;
+            background:
+                radial-gradient(ellipse 70% 40% at 50% 0%, rgba(167,139,250,0.18) 0%, transparent 70%),
+                var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* ══ HEADER ══ */
+        header {
+            background: rgba(255,255,255,0.75);
+            backdrop-filter: blur(16px) saturate(180%);
+            -webkit-backdrop-filter: blur(16px) saturate(180%);
+            border-bottom: 1px solid rgba(255,255,255,0.9);
+            box-shadow: 0 1px 0 rgba(124,58,237,0.08), 0 4px 24px rgba(124,58,237,0.06);
+            position: sticky; top: 0; z-index: 100;
+        }
+
+        .header-inner {
+            max-width: 1000px; margin: 0 auto; padding: 0 24px;
+            height: 60px; display: flex; align-items: center; justify-content: space-between;
+        }
+
+        .logo { display: flex; align-items: center; gap: 10px; }
+
+        .logo-icon {
+            width: 32px; height: 32px;
+            background: linear-gradient(145deg, #9461fb, #6d28d9);
+            border-radius: 9px;
+            display: flex; align-items: center; justify-content: center;
+            box-shadow: 0 4px 12px rgba(109,40,217,0.4), inset 0 1px 0 rgba(255,255,255,0.3);
+            position: relative; overflow: hidden;
+        }
+
+        .logo-icon::before {
+            content: ''; position: absolute;
+            top: 0; left: 0; right: 0; height: 50%;
+            background: linear-gradient(to bottom, rgba(255,255,255,0.3), transparent);
+            border-radius: 9px 9px 0 0;
+        }
+
+        .logo-icon svg {
+            width: 16px; height: 16px;
+            fill: none; stroke: white; stroke-width: 2; stroke-linecap: round;
+            position: relative; z-index: 1;
+        }
+
+        .logo-text { font-size: 15px; font-weight: 700; color: var(--text); letter-spacing: -0.01em; }
+        .logo-text span { color: var(--purple); }
+        .header-right { display: flex; align-items: center; gap: 12px; }
+
+        .header-tag {
+            font-size: 11px; font-weight: 600; color: var(--purple);
+            background: linear-gradient(135deg, #ede9fe, #ddd6fe);
+            border: 1px solid rgba(167,139,250,0.35);
+            padding: 4px 10px; border-radius: 6px; letter-spacing: 0.04em;
+            box-shadow: inset 0 1px 0 rgba(255,255,255,0.8);
+        }
+
+        /* ══ NAV ══ */
+        nav {
+            background: rgba(255,255,255,0.6);
+            backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+            border-bottom: 1px solid rgba(255,255,255,0.9);
+            box-shadow: 0 1px 0 rgba(124,58,237,0.06);
+        }
+
+        .nav-inner { max-width: 1000px; margin: 0 auto; padding: 0 24px; display: flex; }
+
+        .nav-item {
+            padding: 12px 18px; font-size: 13px; font-weight: 500;
+            color: var(--muted); border-bottom: 2px solid transparent;
+            cursor: pointer; transition: color 0.15s, border-color 0.15s;
+            user-select: none;
+        }
+
+        .nav-item:hover { color: var(--purple); }
+
+        .nav-item.active {
+            color: var(--purple); font-weight: 600;
+            border-image: linear-gradient(90deg, #7c3aed, #a78bfa) 1;
+        }
+
+        /* ══ MAIN ══ */
+        main { flex: 1; max-width: 1000px; width: 100%; margin: 0 auto; padding: 32px 24px; }
+
+        .tab-panel { display: none; }
+        .tab-panel.active { display: block; }
+
+        .page-title { margin-bottom: 24px; }
+        .page-title h2 { font-size: 20px; font-weight: 700; color: var(--text); letter-spacing: -0.02em; margin-bottom: 4px; }
+        .page-title p { font-size: 13px; color: var(--muted); }
+
+        .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+        .grid .span-full { grid-column: 1 / -1; }
+
+        /* ══ CARD ══ */
+        .card {
+            background: rgba(255,255,255,0.82);
+            backdrop-filter: blur(20px) saturate(160%);
+            -webkit-backdrop-filter: blur(20px) saturate(160%);
+            border: 1px solid rgba(255,255,255,0.95);
+            border-radius: 18px; padding: 22px;
+            position: relative; overflow: hidden;
+            box-shadow:
+                0 2px 0 rgba(255,255,255,1) inset,
+                0 6px 24px rgba(124,58,237,0.09),
+                0 1px 4px rgba(0,0,0,0.05);
+            transition: box-shadow 0.25s, transform 0.25s;
+        }
+
+        .card::before {
+            content: ''; position: absolute;
+            top: 0; left: 0; right: 0; height: 45%;
+            background: linear-gradient(to bottom, rgba(255,255,255,0.55), transparent);
+            border-radius: 18px 18px 0 0; pointer-events: none;
+        }
+
+        .card::after {
+            content: ''; position: absolute;
+            top: 0; left: 16px; right: 16px; height: 1px;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.9), transparent);
+        }
+
+        .card:hover {
+            box-shadow: 0 2px 0 rgba(255,255,255,1) inset, 0 12px 36px rgba(124,58,237,0.14), 0 2px 8px rgba(0,0,0,0.06);
+            transform: translateY(-2px);
+        }
+
+        .card-header { display: flex; align-items: center; gap: 10px; margin-bottom: 18px; position: relative; z-index: 1; }
+
+        .card-icon {
+            width: 36px; height: 36px; border-radius: 10px;
+            background: linear-gradient(145deg, #ede9fe, #ddd6fe);
+            border: 1px solid rgba(167,139,250,0.3);
+            display: flex; align-items: center; justify-content: center;
+            font-size: 16px; flex-shrink: 0;
+            box-shadow: inset 0 1px 0 rgba(255,255,255,0.9), 0 2px 8px rgba(124,58,237,0.1);
+        }
+
+        .card-title { font-size: 14px; font-weight: 600; color: var(--text); }
+        .card-desc { font-size: 12px; color: var(--muted); margin-top: 1px; }
+
+        /* ══ STATUS BADGE ══ */
+        .status-badge {
+            display: inline-flex; align-items: center; gap: 6px;
+            padding: 5px 12px; border-radius: 20px; font-size: 12px; font-weight: 600;
+            transition: all 0.25s; box-shadow: inset 0 1px 0 rgba(255,255,255,0.7);
+        }
+
+        .status-badge.connected {
+            background: linear-gradient(135deg, #dcfce7, #bbf7d0);
+            color: var(--green); border: 1px solid rgba(22,163,74,0.2);
+        }
+
+        .status-badge.disconnected {
+            background: linear-gradient(135deg, #f9fafb, #f3f4f6);
+            color: var(--faint); border: 1px solid var(--border);
+        }
+
+        .status-dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; flex-shrink: 0; }
+        .status-badge.connected .status-dot { box-shadow: 0 0 6px currentColor; animation: blink 1.8s ease-in-out infinite; }
+
+        @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
+
+        /* ══ FORM ══ */
+        .field-group { display: flex; flex-direction: column; gap: 10px; position: relative; z-index: 1; }
+        .field-row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+
+        label.field-label {
+            font-size: 12px; font-weight: 600; color: var(--muted);
+            display: block; margin-bottom: 5px; letter-spacing: 0.02em;
+        }
+
+        input[type="text"], input[type="number"] {
+            background: rgba(255,255,255,0.8);
+            border: 1px solid rgba(209,213,219,0.8);
+            color: var(--text); font-family: inherit; font-size: 14px;
+            padding: 9px 12px; border-radius: 10px; outline: none;
+            box-shadow: inset 0 2px 4px rgba(0,0,0,0.04), inset 0 1px 0 rgba(255,255,255,0.6);
+            transition: border-color 0.2s, box-shadow 0.2s;
+        }
+
+        input:focus {
+            border-color: rgba(124,58,237,0.5);
+            box-shadow: 0 0 0 3px rgba(124,58,237,0.1), inset 0 2px 4px rgba(0,0,0,0.03);
+            background: var(--white);
+        }
+
+        input::placeholder { color: var(--faint); }
+        #postId, #ws-postId { width: 72px; }
+        #userId { width: 110px; }
+        #content { flex: 1; min-width: 150px; }
+        #redis-key { flex: 1; min-width: 140px; }
+        #redis-value { flex: 1; min-width: 120px; }
+        #redis-ttl { width: 70px; }
+        #rank-postId { width: 80px; }
+
+        .divider { height: 1px; background: linear-gradient(90deg, transparent, var(--border), transparent); margin: 14px 0; }
+
+        /* ══ BUTTONS ══ */
+        .btn {
+            display: inline-flex; align-items: center; gap: 5px;
+            padding: 9px 16px; border-radius: 10px; border: none;
+            font-family: inherit; font-size: 13px; font-weight: 600;
+            cursor: pointer; transition: all 0.15s; white-space: nowrap;
+            position: relative; overflow: hidden;
+        }
+
+        .btn::before {
+            content: ''; position: absolute;
+            top: 0; left: 0; right: 0; height: 50%;
+            background: linear-gradient(to bottom, rgba(255,255,255,0.28), transparent);
+            pointer-events: none;
+        }
+
+        .btn-primary {
+            background: linear-gradient(160deg, #8b5cf6 0%, #6d28d9 100%);
+            color: #fff;
+            box-shadow: 0 4px 14px rgba(109,40,217,0.4), inset 0 1px 0 rgba(255,255,255,0.2);
+        }
+
+        .btn-primary:hover {
+            background: linear-gradient(160deg, #7c3aed 0%, #5b21b6 100%);
+            box-shadow: 0 6px 20px rgba(109,40,217,0.5), inset 0 1px 0 rgba(255,255,255,0.2);
+            transform: translateY(-1px);
+        }
+
+        .btn-primary:active { transform: none; }
+
+        .btn-outline {
+            background: linear-gradient(160deg, #ffffff, #f9fafb);
+            color: var(--muted); border: 1px solid var(--border);
+            box-shadow: inset 0 1px 0 rgba(255,255,255,1), 0 1px 3px rgba(0,0,0,0.06);
+        }
+
+        .btn-outline:hover { color: var(--text); box-shadow: inset 0 1px 0 #fff, 0 2px 8px rgba(0,0,0,0.08); }
+
+        .btn-like {
+            background: linear-gradient(160deg, #fdf2f8, #fce7f3);
+            color: var(--pink); border: 1px solid rgba(219,39,119,0.2);
+            box-shadow: inset 0 1px 0 rgba(255,255,255,0.9), 0 2px 8px rgba(219,39,119,0.1);
+        }
+
+        .btn-like:hover { box-shadow: inset 0 1px 0 #fff, 0 4px 14px rgba(219,39,119,0.2); transform: translateY(-1px); }
+
+        .btn-danger {
+            background: linear-gradient(160deg, #fff5f5, #fee2e2);
+            color: var(--red); border: 1px solid rgba(220,38,38,0.2);
+            box-shadow: inset 0 1px 0 rgba(255,255,255,0.9), 0 2px 8px rgba(220,38,38,0.08);
+        }
+
+        .btn-danger:hover { box-shadow: inset 0 1px 0 #fff, 0 4px 14px rgba(220,38,38,0.18); transform: translateY(-1px); }
+
+        .btn-sm { padding: 7px 12px; font-size: 12px; }
+
+        /* ══ LOG ══ */
+        .log-box {
+            background: rgba(249,250,251,0.7);
+            border: 1px solid rgba(229,231,235,0.8);
+            border-radius: 12px; padding: 14px;
+            min-height: 180px; max-height: 300px; overflow-y: auto;
+            font-family: 'Fira Code', 'JetBrains Mono', ui-monospace, monospace;
+            font-size: 12.5px;
+            box-shadow: inset 0 2px 6px rgba(0,0,0,0.04);
+            position: relative; z-index: 1;
+            scrollbar-width: thin; scrollbar-color: #ddd6fe transparent;
+        }
+
+        .log-box::-webkit-scrollbar { width: 4px; }
+        .log-box::-webkit-scrollbar-thumb { background: #ddd6fe; border-radius: 4px; }
+
+        .log-entry {
+            display: flex; gap: 12px; padding: 6px 0;
+            border-bottom: 1px solid rgba(243,244,246,0.8);
+            animation: fadeUp 0.2s ease;
+        }
+
+        @keyframes fadeUp { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: translateY(0); } }
+
+        .log-time { color: var(--faint); white-space: nowrap; flex-shrink: 0; }
+        .log-entry.log-event .log-body { color: var(--purple); font-weight: 500; }
+        .log-entry.log-system .log-body { color: var(--muted); }
+        .log-empty { color: var(--faint); font-style: italic; padding: 6px 0; }
+
+        /* ══ REDIS RESULT ══ */
+        .result-box {
+            background: rgba(249,250,251,0.7);
+            border: 1px solid rgba(229,231,235,0.8);
+            border-radius: 10px; padding: 12px 14px;
+            font-family: 'Fira Code', 'JetBrains Mono', ui-monospace, monospace;
+            font-size: 13px; color: var(--purple); font-weight: 500;
+            min-height: 42px;
+            box-shadow: inset 0 2px 4px rgba(0,0,0,0.03);
+            position: relative; z-index: 1;
+        }
+
+        .result-box.empty { color: var(--faint); font-style: italic; font-weight: 400; }
+
+        /* ══ WS INFO GRID ══ */
+        .info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; position: relative; z-index: 1; }
+
+        .info-item {
+            background: rgba(249,250,251,0.8);
+            border: 1px solid rgba(229,231,235,0.7);
+            border-radius: 10px; padding: 12px 14px;
+            box-shadow: inset 0 1px 0 rgba(255,255,255,0.9);
+        }
+
+        .info-label { font-size: 11px; font-weight: 600; color: var(--faint); letter-spacing: 0.06em; text-transform: uppercase; margin-bottom: 4px; }
+        .info-value { font-size: 13px; font-weight: 600; color: var(--text); font-family: 'Fira Code', monospace; }
+        .info-value.accent { color: var(--purple); }
+
+        /* ══ RANKING TABLE ══ */
+        .ranking-table {
+            width: 100%; border-collapse: collapse;
+            position: relative; z-index: 1;
+        }
+
+        .ranking-table th {
+            text-align: left; font-size: 11px; font-weight: 600;
+            color: var(--faint); letter-spacing: 0.08em; text-transform: uppercase;
+            padding: 8px 12px; border-bottom: 1px solid var(--border);
+        }
+
+        .ranking-table td {
+            padding: 12px 12px; font-size: 14px;
+            border-bottom: 1px solid rgba(243,244,246,0.8);
+        }
+
+        .ranking-table tr:last-child td { border-bottom: none; }
+
+        .ranking-table tr:hover td { background: rgba(237,233,254,0.3); }
+
+        .rank-num {
+            width: 32px; height: 32px; border-radius: 8px;
+            display: inline-flex; align-items: center; justify-content: center;
+            font-size: 13px; font-weight: 700;
+        }
+
+        .rank-1 { background: linear-gradient(135deg, #fef9c3, #fde68a); color: #92400e; box-shadow: inset 0 1px 0 rgba(255,255,255,0.8); }
+        .rank-2 { background: linear-gradient(135deg, #f1f5f9, #e2e8f0); color: #475569; box-shadow: inset 0 1px 0 rgba(255,255,255,0.8); }
+        .rank-3 { background: linear-gradient(135deg, #ffedd5, #fed7aa); color: #9a3412; box-shadow: inset 0 1px 0 rgba(255,255,255,0.8); }
+        .rank-other { background: rgba(243,244,246,0.8); color: var(--muted); }
+
+        .score-bar-wrap { display: flex; align-items: center; gap: 10px; }
+        .score-bar { height: 6px; border-radius: 3px; background: linear-gradient(90deg, #8b5cf6, #a78bfa); flex-shrink: 0; }
+        .score-num { font-size: 13px; font-weight: 600; color: var(--purple); }
+
+        .empty-ranking { text-align: center; padding: 32px; color: var(--faint); font-size: 13px; }
+
+        /* ══ FOOTER ══ */
+        footer {
+            background: rgba(255,255,255,0.7);
+            backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+            border-top: 1px solid rgba(255,255,255,0.95);
+            box-shadow: 0 -1px 0 rgba(124,58,237,0.06);
+            padding: 16px 24px;
+        }
+
+        .footer-inner { max-width: 1000px; margin: 0 auto; display: flex; align-items: center; justify-content: space-between; }
+        .footer-left { font-size: 12px; color: var(--faint); }
+        .footer-stack { display: flex; gap: 6px; flex-wrap: wrap; }
+
+        .stack-tag {
+            font-size: 11px; font-weight: 600; padding: 3px 10px; border-radius: 6px;
+            background: linear-gradient(135deg, #ede9fe, #ddd6fe);
+            color: var(--purple); border: 1px solid rgba(167,139,250,0.3);
+            box-shadow: inset 0 1px 0 rgba(255,255,255,0.8);
+        }
+
+        @media (max-width: 600px) {
+            .grid { grid-template-columns: 1fr; }
+            .grid .span-full { grid-column: 1; }
+            .info-grid { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body>
+
+<!-- ══ HEADER ══ -->
+<header>
+    <div class="header-inner">
+        <div class="logo">
+            <div class="logo-icon">
+                <svg viewBox="0 0 24 24"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+            </div>
+            <span class="logo-text">Realtime <span>Platform</span></span>
+        </div>
+        <div class="header-right">
+            <span class="header-tag">Spring Boot 4</span>
+            <span class="header-tag">Redis Pub/Sub</span>
+            <span id="status" class="status-badge disconnected">
+                <span class="status-dot"></span>미연결
+            </span>
+        </div>
+    </div>
+</header>
+
+<!-- ══ NAV ══ -->
+<nav>
+    <div class="nav-inner">
+        <div class="nav-item active" onclick="switchTab('dashboard', this)">대시보드</div>
+        <div class="nav-item" onclick="switchTab('websocket', this)">WebSocket</div>
+        <div class="nav-item" onclick="switchTab('redis', this)">Redis</div>
+        <div class="nav-item" onclick="switchTab('ranking', this)">랭킹</div>
+    </div>
+</nav>
+
+<!-- ══ BODY ══ -->
+<main>
+
+    <!-- ────────────────────────────
+         TAB 1: 대시보드
+    ──────────────────────────────── -->
+    <div class="tab-panel active" id="panel-dashboard">
+        <div class="page-title">
+            <h2>실시간 이벤트 테스트</h2>
+            <p>Redis Pub/Sub으로 이벤트를 발행하고 WebSocket으로 수신되는 과정을 확인합니다.</p>
+        </div>
+        <div class="grid">
+
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-icon">🔌</div>
+                    <div>
+                        <div class="card-title">WebSocket 구독</div>
+                        <div class="card-desc">게시글 채널에 연결합니다</div>
+                    </div>
+                </div>
+                <div class="field-group">
+                    <div>
+                        <label class="field-label">게시글 ID</label>
+                        <div class="field-row">
+                            <input type="number" id="postId" value="1" placeholder="1">
+                            <button class="btn btn-primary" onclick="connect()">연결</button>
+                            <button class="btn btn-outline" onclick="disconnect()">해제</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-icon">📡</div>
+                    <div>
+                        <div class="card-title">이벤트 발행</div>
+                        <div class="card-desc">댓글 · 좋아요 이벤트를 Redis로 발행합니다</div>
+                    </div>
+                </div>
+                <div class="field-group">
+                    <div>
+                        <label class="field-label">댓글 작성</label>
+                        <div class="field-row">
+                            <input type="text" id="userId" placeholder="유저 ID" value="user1">
+                            <input type="text" id="content" placeholder="댓글 내용">
+                            <button class="btn btn-primary" onclick="sendComment()">작성</button>
+                        </div>
+                    </div>
+                    <div class="divider"></div>
+                    <div>
+                        <label class="field-label">좋아요</label>
+                        <div class="field-row">
+                            <button class="btn btn-like" onclick="sendLike()">♥ 좋아요</button>
+                            <button class="btn btn-danger" onclick="sendUnlike()">♡ 취소</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card span-full">
+                <div class="card-header">
+                    <div class="card-icon">📋</div>
+                    <div>
+                        <div class="card-title">실시간 알림 수신</div>
+                        <div class="card-desc">Redis → WebSocket으로 전달된 이벤트 로그</div>
+                    </div>
+                </div>
+                <div class="log-box" id="log">
+                    <div class="log-empty">← 구독 연결 후 이벤트를 발행하면 여기에 표시됩니다</div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- ────────────────────────────
+         TAB 2: WebSocket
+    ──────────────────────────────── -->
+    <div class="tab-panel" id="panel-websocket">
+        <div class="page-title">
+            <h2>WebSocket 연결 정보</h2>
+            <p>STOMP 프로토콜 기반 WebSocket 연결 상태와 구독 채널을 확인합니다.</p>
+        </div>
+        <div class="grid">
+
+            <div class="card span-full">
+                <div class="card-header">
+                    <div class="card-icon">⚙️</div>
+                    <div>
+                        <div class="card-title">연결 스펙</div>
+                        <div class="card-desc">현재 서버의 WebSocket 설정</div>
+                    </div>
+                </div>
+                <div class="info-grid">
+                    <div class="info-item">
+                        <div class="info-label">Endpoint</div>
+                        <div class="info-value accent">/ws</div>
+                    </div>
+                    <div class="info-item">
+                        <div class="info-label">Protocol</div>
+                        <div class="info-value">STOMP over SockJS</div>
+                    </div>
+                    <div class="info-item">
+                        <div class="info-label">Subscribe Topic</div>
+                        <div class="info-value accent">/topic/post/{postId}</div>
+                    </div>
+                    <div class="info-item">
+                        <div class="info-label">Broker</div>
+                        <div class="info-value">Simple In-Memory Broker</div>
+                    </div>
+                    <div class="info-item">
+                        <div class="info-label">App Prefix</div>
+                        <div class="info-value accent">/app</div>
+                    </div>
+                    <div class="info-item">
+                        <div class="info-label">현재 상태</div>
+                        <div class="info-value" id="ws-status-text">미연결</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-icon">🔌</div>
+                    <div>
+                        <div class="card-title">채널 구독</div>
+                        <div class="card-desc">게시글 ID로 실시간 채널 구독</div>
+                    </div>
+                </div>
+                <div class="field-group">
+                    <div>
+                        <label class="field-label">게시글 ID</label>
+                        <div class="field-row">
+                            <input type="number" id="ws-postId" value="1">
+                            <button class="btn btn-primary" onclick="wsConnect()">구독</button>
+                            <button class="btn btn-outline" onclick="disconnect()">해제</button>
+                        </div>
+                    </div>
+                    <div id="ws-sub-info" style="font-size:12px; color:var(--faint); position:relative; z-index:1;"></div>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-icon">📤</div>
+                    <div>
+                        <div class="card-title">메시지 발행</div>
+                        <div class="card-desc">댓글 이벤트를 발행하여 WS 수신 확인</div>
+                    </div>
+                </div>
+                <div class="field-group">
+                    <div>
+                        <label class="field-label">댓글 내용</label>
+                        <div class="field-row">
+                            <input type="text" id="ws-content" placeholder="테스트 댓글" style="flex:1">
+                            <button class="btn btn-primary" onclick="wsSendComment()">발행</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card span-full">
+                <div class="card-header">
+                    <div class="card-icon">📡</div>
+                    <div>
+                        <div class="card-title">실시간 스트림</div>
+                        <div class="card-desc">수신된 WebSocket 메시지 로그</div>
+                    </div>
+                </div>
+                <div class="log-box" id="ws-log">
+                    <div class="log-empty">← 채널 구독 후 메시지가 수신되면 여기에 표시됩니다</div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- ────────────────────────────
+         TAB 3: Redis
+    ──────────────────────────────── -->
+    <div class="tab-panel" id="panel-redis">
+        <div class="page-title">
+            <h2>Redis 탐색기</h2>
+            <p>Key-Value 저장, TTL 설정, 조회수 · 좋아요 수를 직접 확인합니다.</p>
+        </div>
+        <div class="grid">
+
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-icon">💾</div>
+                    <div>
+                        <div class="card-title">Key-Value 저장</div>
+                        <div class="card-desc">TTL과 함께 데이터를 저장합니다</div>
+                    </div>
+                </div>
+                <div class="field-group">
+                    <div>
+                        <label class="field-label">Key</label>
+                        <input type="text" id="redis-key" placeholder="예: test:key">
+                    </div>
+                    <div>
+                        <label class="field-label">Value</label>
+                        <input type="text" id="redis-value" placeholder="저장할 값">
+                    </div>
+                    <div>
+                        <label class="field-label">TTL (초)</label>
+                        <div class="field-row">
+                            <input type="number" id="redis-ttl" value="30">
+                            <button class="btn btn-primary" onclick="redisSet()">저장</button>
+                        </div>
+                    </div>
+                    <div class="divider"></div>
+                    <div>
+                        <label class="field-label">조회 / TTL 확인 / 삭제</label>
+                        <div class="field-row">
+                            <button class="btn btn-outline btn-sm" onclick="redisGet()">조회</button>
+                            <button class="btn btn-outline btn-sm" onclick="redisTtl()">TTL 확인</button>
+                            <button class="btn btn-danger btn-sm" onclick="redisDelete()">삭제</button>
+                        </div>
+                    </div>
+                    <div>
+                        <label class="field-label">결과</label>
+                        <div class="result-box empty" id="redis-result">결과가 여기에 표시됩니다</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-icon">📊</div>
+                    <div>
+                        <div class="card-title">게시글 통계</div>
+                        <div class="card-desc">조회수 · 좋아요 수를 실시간으로 확인합니다</div>
+                    </div>
+                </div>
+                <div class="field-group">
+                    <div>
+                        <label class="field-label">게시글 ID</label>
+                        <div class="field-row">
+                            <input type="number" id="stat-postId" value="1" style="width:80px">
+                            <button class="btn btn-primary btn-sm" onclick="fetchStats()">조회</button>
+                        </div>
+                    </div>
+                    <div class="info-grid" style="margin-top:4px">
+                        <div class="info-item">
+                            <div class="info-label">👁 조회수</div>
+                            <div class="info-value accent" id="stat-views">—</div>
+                        </div>
+                        <div class="info-item">
+                            <div class="info-label">♥ 좋아요</div>
+                            <div class="info-value accent" id="stat-likes">—</div>
+                        </div>
+                        <div class="info-item">
+                            <div class="info-label">💬 댓글 수</div>
+                            <div class="info-value accent" id="stat-comments">—</div>
+                        </div>
+                        <div class="info-item">
+                            <div class="info-label">🏆 랭킹 점수</div>
+                            <div class="info-value accent" id="stat-score">—</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- ────────────────────────────
+         TAB 4: 랭킹
+    ──────────────────────────────── -->
+    <div class="tab-panel" id="panel-ranking">
+        <div class="page-title">
+            <h2>인기 게시글 랭킹</h2>
+            <p>Redis Sorted Set 기반 실시간 인기 순위입니다. 조회 +1점 · 좋아요 +3점.</p>
+        </div>
+        <div class="grid">
+
+            <div class="card" style="grid-column: 1 / -1">
+                <div class="card-header" style="justify-content: space-between">
+                    <div style="display:flex; align-items:center; gap:10px">
+                        <div class="card-icon">🏆</div>
+                        <div>
+                            <div class="card-title">TOP 랭킹</div>
+                            <div class="card-desc">점수 높은 순으로 정렬</div>
+                        </div>
+                    </div>
+                    <div style="display:flex; gap:8px; align-items:center; position:relative; z-index:1">
+                        <input type="number" id="rank-count" value="10" style="width:60px" placeholder="10">
+                        <button class="btn btn-primary btn-sm" onclick="fetchRanking()">새로고침</button>
+                    </div>
+                </div>
+                <div style="position:relative; z-index:1">
+                    <table class="ranking-table">
+                        <thead>
+                            <tr>
+                                <th>순위</th>
+                                <th>게시글 ID</th>
+                                <th>점수</th>
+                                <th>점수 바</th>
+                            </tr>
+                        </thead>
+                        <tbody id="ranking-body">
+                            <tr><td colspan="4" class="empty-ranking">새로고침 버튼을 눌러 랭킹을 불러오세요</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div class="card span-full">
+                <div class="card-header">
+                    <div class="card-icon">🔍</div>
+                    <div>
+                        <div class="card-title">특정 게시글 순위 조회</div>
+                        <div class="card-desc">게시글 ID로 현재 순위와 점수를 확인합니다</div>
+                    </div>
+                </div>
+                <div class="field-group">
+                    <div>
+                        <label class="field-label">게시글 ID</label>
+                        <div class="field-row">
+                            <input type="number" id="rank-postId" value="1">
+                            <button class="btn btn-primary" onclick="fetchPostRank()">조회</button>
+                        </div>
+                    </div>
+                    <div class="info-grid">
+                        <div class="info-item">
+                            <div class="info-label">현재 순위</div>
+                            <div class="info-value accent" id="post-rank">—</div>
+                        </div>
+                        <div class="info-item">
+                            <div class="info-label">점수</div>
+                            <div class="info-value accent" id="post-score">—</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+</main>
+
+<!-- ══ FOOTER ══ -->
+<footer>
+    <div class="footer-inner">
+        <span class="footer-left">© 2026 Realtime Platform — portfolio project</span>
+        <div class="footer-stack">
+            <span class="stack-tag">Spring Boot</span>
+            <span class="stack-tag">Redis</span>
+            <span class="stack-tag">WebSocket</span>
+            <span class="stack-tag">STOMP</span>
+        </div>
+    </div>
+</footer>
+
+<script>
+    let stompClient = null;
+    let subscribedPostId = null;
+
+    /* ── 탭 전환 ── */
+    function switchTab(name, el) {
+        document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+        document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+        document.getElementById('panel-' + name).classList.add('active');
+        el.classList.add('active');
+        if (name === 'ranking') fetchRanking();
+    }
+
+    /* ── 상태 배지 ── */
+    function setStatus(connected) {
+        const el = document.getElementById('status');
+        el.className = 'status-badge ' + (connected ? 'connected' : 'disconnected');
+        el.innerHTML = `<span class="status-dot"></span>${connected ? '연결됨' : '미연결'}`;
+        const wsText = document.getElementById('ws-status-text');
+        if (wsText) wsText.textContent = connected ? '연결됨 ✓' : '미연결';
+    }
+
+    /* ═══════════════════════════
+       대시보드 탭
+    ═══════════════════════════ */
+    function connect() {
+        const postId = document.getElementById('postId').value;
+        doConnect(postId, 'log');
+    }
+
+    function disconnect() {
+        if (stompClient) {
+            stompClient.disconnect();
+            stompClient = null;
+            subscribedPostId = null;
+            setStatus(false);
+            appendLog('log', '연결 해제됨', 'log-system');
+            appendLog('ws-log', '연결 해제됨', 'log-system');
+            document.getElementById('ws-sub-info').textContent = '';
+        }
+    }
+
+    function sendComment() {
+        const postId = document.getElementById('postId').value;
+        const userId = document.getElementById('userId').value;
+        const content = document.getElementById('content').value;
+        if (!content) return;
+        apiComment(postId, userId, content, 'log');
+        document.getElementById('content').value = '';
+    }
+
+    function sendLike() {
+        const postId = document.getElementById('postId').value;
+        const userId = document.getElementById('userId').value;
+        fetch(`/api/posts/${postId}/likes?userId=${userId}`, { method: 'POST' })
+            .then(r => r.json())
+            .then(d => appendLog('log', `좋아요 → ${d.message}  likeCount: ${d.likeCount}`, 'log-system'));
+    }
+
+    function sendUnlike() {
+        const postId = document.getElementById('postId').value;
+        const userId = document.getElementById('userId').value;
+        fetch(`/api/posts/${postId}/likes?userId=${userId}`, { method: 'DELETE' })
+            .then(r => r.json())
+            .then(d => appendLog('log', `취소 → ${d.message}  likeCount: ${d.likeCount}`, 'log-system'));
+    }
+
+    /* ═══════════════════════════
+       WebSocket 탭
+    ═══════════════════════════ */
+    function wsConnect() {
+        const postId = document.getElementById('ws-postId').value;
+        doConnect(postId, 'ws-log');
+        document.getElementById('ws-sub-info').textContent = `구독 중: /topic/post/${postId}`;
+    }
+
+    function wsSendComment() {
+        if (!subscribedPostId) {
+            appendLog('ws-log', '먼저 채널에 구독하세요', 'log-system');
+            return;
+        }
+        const content = document.getElementById('ws-content').value;
+        if (!content) return;
+        apiComment(subscribedPostId, 'ws-tester', content, 'ws-log');
+        document.getElementById('ws-content').value = '';
+    }
+
+    /* ═══════════════════════════
+       공통 WebSocket 연결
+    ═══════════════════════════ */
+    function doConnect(postId, logId) {
+        if (stompClient) stompClient.disconnect();
+
+        const socket = new SockJS('/ws');
+        stompClient = Stomp.over(socket);
+        stompClient.debug = null;
+        subscribedPostId = postId;
+
+        stompClient.connect({}, function () {
+            setStatus(true);
+            appendLog(logId, `구독 시작 → /topic/post/${postId}`, 'log-system');
+
+            stompClient.subscribe('/topic/post/' + postId, function (message) {
+                const event = JSON.parse(message.body);
+                const text = `[${event.type}]  post:${event.postId}  user:${event.userId}  "${event.content}"`;
+                appendLog('log', text, 'log-event');
+                appendLog('ws-log', text, 'log-event');
+            });
+        }, function () {
+            setStatus(false);
+        });
+    }
+
+    /* ═══════════════════════════
+       Redis 탭
+    ═══════════════════════════ */
+    function redisSet() {
+        const key = document.getElementById('redis-key').value;
+        const value = document.getElementById('redis-value').value;
+        const ttl = document.getElementById('redis-ttl').value;
+        if (!key || !value) return;
+        fetch(`/api/redis/set?key=${encodeURIComponent(key)}&value=${encodeURIComponent(value)}&ttl=${ttl}`, { method: 'POST' })
+            .then(r => r.json())
+            .then(d => setResult(`저장 완료 — key: ${d.key}  ttl: ${d.ttl}`));
+    }
+
+    function redisGet() {
+        const key = document.getElementById('redis-key').value;
+        if (!key) return;
+        fetch(`/api/redis/get?key=${encodeURIComponent(key)}`)
+            .then(r => r.json())
+            .then(d => setResult(`value: ${d.value}`));
+    }
+
+    function redisTtl() {
+        const key = document.getElementById('redis-key').value;
+        if (!key) return;
+        fetch(`/api/redis/ttl?key=${encodeURIComponent(key)}`)
+            .then(r => r.json())
+            .then(d => setResult(`TTL: ${d.ttl}`));
+    }
+
+    function redisDelete() {
+        const key = document.getElementById('redis-key').value;
+        if (!key) return;
+        fetch(`/api/redis/delete?key=${encodeURIComponent(key)}`, { method: 'DELETE' })
+            .then(r => r.json())
+            .then(d => setResult(`삭제 완료 — key: ${d.key}`));
+    }
+
+    function setResult(text) {
+        const el = document.getElementById('redis-result');
+        el.textContent = text;
+        el.classList.remove('empty');
+    }
+
+    function fetchStats() {
+        const postId = document.getElementById('stat-postId').value;
+        Promise.all([
+            fetch(`/api/posts/${postId}/views`).then(r => r.json()),
+            fetch(`/api/posts/${postId}/likes`).then(r => r.json()),
+            fetch(`/api/posts/${postId}/comments/count`).then(r => r.json()),
+            fetch(`/api/ranking/posts/${postId}`).then(r => r.json())
+        ]).then(([views, likes, comments, rank]) => {
+            document.getElementById('stat-views').textContent = views.viewCount;
+            document.getElementById('stat-likes').textContent = likes.likeCount;
+            document.getElementById('stat-comments').textContent = comments.commentCount;
+            document.getElementById('stat-score').textContent = rank.score + 'pt';
+        });
+    }
+
+    /* ═══════════════════════════
+       랭킹 탭
+    ═══════════════════════════ */
+    function fetchRanking() {
+        const count = document.getElementById('rank-count').value || 10;
+        fetch(`/api/ranking/posts?count=${count}`)
+            .then(r => r.json())
+            .then(data => {
+                const tbody = document.getElementById('ranking-body');
+                if (!data.length) {
+                    tbody.innerHTML = '<tr><td colspan="4" class="empty-ranking">랭킹 데이터가 없습니다. 게시글을 조회하거나 좋아요를 눌러보세요.</td></tr>';
+                    return;
+                }
+                const maxScore = data[0].score || 1;
+                tbody.innerHTML = data.map(row => {
+                    const rankClass = row.rank === 1 ? 'rank-1' : row.rank === 2 ? 'rank-2' : row.rank === 3 ? 'rank-3' : 'rank-other';
+                    const barWidth = Math.max(4, Math.round((row.score / maxScore) * 120));
+                    return `
+                        <tr>
+                            <td><span class="rank-num ${rankClass}">${row.rank}</span></td>
+                            <td style="font-weight:600">Post #${row.postId}</td>
+                            <td><span class="score-num">${row.score}pt</span></td>
+                            <td><div class="score-bar-wrap"><div class="score-bar" style="width:${barWidth}px"></div></div></td>
+                        </tr>`;
+                }).join('');
+            });
+    }
+
+    function fetchPostRank() {
+        const postId = document.getElementById('rank-postId').value;
+        fetch(`/api/ranking/posts/${postId}`)
+            .then(r => r.json())
+            .then(d => {
+                document.getElementById('post-rank').textContent = d.rank === -1 ? '순위 없음' : d.rank + '위';
+                document.getElementById('post-score').textContent = d.score + 'pt';
+            });
+    }
+
+    /* ── 공통 유틸 ── */
+    function apiComment(postId, userId, content, logId) {
+        fetch(`/api/posts/${postId}/comments?userId=${userId}&content=${encodeURIComponent(content)}`, { method: 'POST' })
+            .then(r => r.json())
+            .then(d => appendLog(logId, `댓글 전송 완료 → commentCount: ${d.commentCount}`, 'log-system'));
+    }
+
+    function appendLog(logId, text, cls) {
+        const log = document.getElementById(logId);
+        if (!log) return;
+        const empty = log.querySelector('.log-empty');
+        if (empty) empty.remove();
+
+        const entry = document.createElement('div');
+        entry.className = 'log-entry ' + (cls || '');
+
+        const time = document.createElement('span');
+        time.className = 'log-time';
+        time.textContent = new Date().toLocaleTimeString('ko-KR', { hour12: false });
+
+        const body = document.createElement('span');
+        body.className = 'log-body';
+        body.textContent = text;
+
+        entry.appendChild(time);
+        entry.appendChild(body);
+        log.prepend(entry);
+    }
+</script>
+</body>
+</html>
