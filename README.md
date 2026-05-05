@@ -34,19 +34,53 @@
 
   ## 아키텍처
 
-  Client (REST)
-      ↓
-  Spring Security (JWT Filter)
-      ↓
-  Controller → Service → RedisService
-                  ↓
-             Redis (String / Sorted Set / Pub/Sub)
-                  ↓
-          NotificationSubscriber
-                  ↓
-       WebSocket (STOMP /topic/post/{postId})
-                  ↓
-           Client (WebSocket)
+  ```text                                                                                                                                                                                                                             
+  ┌─────────────────────────────────────────────────────────┐
+  │                      REST Client                         │
+  └─────────────────────────┬───────────────────────────────┘
+                            │  HTTP + Bearer Token
+                            ▼
+                ┌───────────────────────┐
+                │       JWT Filter       │
+                └───────────┬───────────┘
+                            │
+                            ▼
+                ┌───────────────────────┐
+                │      Controller       │
+                │ Post·Like·Comment·    │
+                │ Ranking·Auth·Redis    │
+                └───────────┬───────────┘
+                            │
+                            ▼
+                ┌───────────────────────┐
+                │        Service        │
+                └────┬─────────────┬────┘
+                     │             │
+         ┌───────────▼──────┐  ┌───▼──────────────────┐
+         │      Redis        │  │  NotificationPublisher│
+         │                   │  └───────────┬───────────┘
+         │  String           │              │
+         │  ├ post:views     │              │ channel:post:{id}
+         │  ├ post:likes     │              ▼
+         │  └ post:comments  │  ┌───────────────────────┐
+         │                   │  │    Redis  Pub/Sub      │
+         │  Sorted Set       │  └───────────┬───────────┘
+         │  └ ranking:posts  │              │
+         └───────────────────┘              ▼
+                                 ┌───────────────────────┐
+                                 │ NotificationSubscriber │
+                                 └───────────┬───────────┘
+                                             │
+                                             ▼
+                                 ┌───────────────────────┐
+                                 │   WebSocket Broker     │
+                                 │  /topic/post/{postId}  │
+                                 └───────────┬───────────┘
+                                             │
+                                 ┌───────────▼───────────┐
+                                 │    WebSocket Client    │
+                                 └───────────────────────┘
+  ```
 
   **실시간 알림 흐름**
   1. 댓글 작성 API 호출
