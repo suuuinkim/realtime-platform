@@ -41,7 +41,7 @@
                             │  HTTP + Bearer Token
                             ▼
                 ┌───────────────────────┐
-                │       JWT Filter       │
+                │       JWT Filter      │
                 └───────────┬───────────┘
                             │
                             ▼
@@ -57,28 +57,28 @@
                 └────┬─────────────┬────┘
                      │             │
          ┌───────────▼──────┐  ┌───▼──────────────────┐
-         │      Redis        │  │  NotificationPublisher│
-         │                   │  └───────────┬───────────┘
-         │  String           │              │
-         │  ├ post:views     │              │ channel:post:{id}
-         │  ├ post:likes     │              ▼
+         │      Redis        │ │ NotificationPublisher│
+         │                   │ └───────────┬──────────┘
+         │  String           │             │
+         │  ├ post:views     │             │ channel:post:{id}
+         │  ├ post:likes     │             ▼
          │  └ post:comments  │  ┌───────────────────────┐
-         │                   │  │    Redis  Pub/Sub      │
+         │                   │  │    Redis  Pub/Sub     │
          │  Sorted Set       │  └───────────┬───────────┘
          │  └ ranking:posts  │              │
          └───────────────────┘              ▼
                                  ┌───────────────────────┐
-                                 │ NotificationSubscriber │
+                                 │ NotificationSubscriber│
                                  └───────────┬───────────┘
                                              │
                                              ▼
                                  ┌───────────────────────┐
-                                 │   WebSocket Broker     │
-                                 │  /topic/post/{postId}  │
+                                 │   WebSocket Broker    │
+                                 │  /topic/post/{postId} │
                                  └───────────┬───────────┘
                                              │
                                  ┌───────────▼───────────┐
-                                 │    WebSocket Client    │
+                                 │    WebSocket Client   │
                                  └───────────────────────┘
   ```
 
