@@ -1,11 +1,22 @@
 spring:
   application:
     name: realtime-platform
-  data :
-    redis :
-      host : localhost
-      port : 6379
-  jwt :
-    secret : 'password-sikim'
-    access-token-expiration : 3600000
-    refresh-token-expiration : 1209600000
+  data:
+    redis:
+      host: localhost
+      port: 6379
+  kafka:
+    bootstrap-servers: localhost:9092
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.apache.kafka.common.serialization.StringSerializer
+    consumer:
+      group-id: notification-group
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      auto-offset-reset: latest
+
+jwt:
+  secret: 'password-sikim-secret-key-for-jwt-256bits!!'
+  access-token-expiration: 3600000
+  refresh-token-expiration: 1209600000

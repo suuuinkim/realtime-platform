@@ -1,5 +1,7 @@
 package com.practice.realtimeplatform.service;
 
+import com.practice.realtimeplatform.kafka.NotificationKafkaProducer;
+import com.practice.realtimeplatform.pubsub.NotificationEvent;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -14,6 +16,7 @@ public class LikeService {
 
     private final RedisService redisService;
     private final RankingService rankingService;
+    private final NotificationKafkaProducer kafkaProducer;
 
     public String like(Long postId, String userId) {
         String key = String.format(LIKE_KEY, postId, userId);
@@ -25,6 +28,7 @@ public class LikeService {
 
         redisService.increment(LIKE_COUNT_KEY + postId);
         rankingService.addLikeScore(postId);
+        kafkaProducer.publish(new NotificationEvent("LIKE", postId, userId, "좋아요를 눌렀습니다."));
         return "좋아요!";
     }
 

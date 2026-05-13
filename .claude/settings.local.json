@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(xargs wc *)",
+      "Bash(./gradlew compileJava *)",
+      "PowerShell($env:JAVA_HOME = \"C:\\\\Program Files\\\\Java\\\\jdk-21.0.10\"; .\\\\gradlew compileJava 2>&1)",
+      "WebFetch(domain:floret-mark-70548518.figma.site)"
+    ]
+  }
+}
