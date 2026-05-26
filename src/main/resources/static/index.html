@@ -294,7 +294,23 @@
 </head>
 <body>
 
+
+
 <div class="os-window">
+
+    <div class="section-label">Auth</div>
+
+    <div class="field">
+        <label>LOGIN ID</label>
+        <input type="text" id="login-id" value="admin" style="width: 100%">
+    </div>
+
+    <div class="field">
+        <label>PASSWORD</label>
+        <input type="text" id="login-password" value="1234" style="width: 100%">
+    </div>
+
+    <button class="btn btn-full btn-dark" onclick="login()">[ Login ] </button>
 
     <!-- Title Bar -->
     <div class="title-bar">
@@ -536,7 +552,39 @@
 <script>
     let stompClient = null;
     let subscribedPostId = null;
+    let accessToken = localStorage.getItem('accessToken') || null;
 
+    function authHeaders() {
+        return accessToken
+            ? { 'Authorization' : 'Bearer ' + accessToken}
+            : {};
+    }
+
+    function login() {
+        const loginId = document.getElementById('login-id').value;
+        const password = document.getElementById('login-password').value;
+
+        fetch('/api/v1/login', {
+            method : 'POST',
+            headers: {
+                'Content-Type' : 'application/json'
+            },
+            body: JSON.stringify({loginId, password})
+        })
+            .then(r => {
+                if(!r.ok) throw new Error('Login failed');
+                return r.json();
+            })
+            .then(data => {
+                accessToken = data.accessToken;
+                localStorage.setItem('accessToken', accessToken);
+                appendLog('global-log', 'Login success', 'log-sys');
+            })
+            .catch(arr => {
+                appendLog('global-log', err.message, 'log-sys';)
+            })
+
+    }
     function getPostId() { return document.getElementById('g-postId').value; }
     function getUserId() { return document.getElementById('g-userId').value; }
 
