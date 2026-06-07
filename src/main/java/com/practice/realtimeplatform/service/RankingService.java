@@ -1,12 +1,13 @@
 package com.practice.realtimeplatform.service;
 
+import com.practice.realtimeplatform.dto.PostRankResponse;
+import com.practice.realtimeplatform.dto.RankingPostResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.redis.core.ZSetOperations;
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
 
 @Service
@@ -31,29 +32,29 @@ public class RankingService {
         redisService.incrementZScore(RANKING_KEY, postId.toString(), -LIKE_SCORE);
     }
 
-    public List<Map<String, Object>> getTopPosts(int count) {
+    public List<RankingPostResponse> getTopPosts(int count) {
         Set<ZSetOperations.TypedTuple<String>> result =
                 redisService.getTopRanking(RANKING_KEY, count);
 
-        List<Map<String, Object>> ranking = new ArrayList<>();
+        List<RankingPostResponse> ranking = new ArrayList<>();
         int rank = 1;
         for (ZSetOperations.TypedTuple<String> entry : result) {
-            ranking.add(Map.of(
-                    "rank", rank++,
-                    "postId", entry.getValue(),
-                    "score", entry.getScore() != null ? entry.getScore().intValue() : 0
+            ranking.add(new RankingPostResponse(
+                    rank++,
+                    entry.getValue(),
+                    entry.getScore() != null ? entry.getScore().intValue() : 0
             ));
         }
         return ranking;
     }
 
-    public Map<String, Object> getPostRank(Long postId) {
+    public PostRankResponse getPostRank(Long postId) {
         Long rank = redisService.getRank(RANKING_KEY, postId.toString());
         Double score = redisService.getScore(RANKING_KEY, postId.toString());
-        return Map.of(
-                "postId", postId,
-                "rank", rank != null ? rank + 1 : -1,   // 0-based → 1-based
-                "score", score != null ? score.intValue() : 0
+        return new PostRankResponse(
+                postId,
+                rank != null ? rank + 1 : -1,
+                score != null ? score.intValue() : 0
         );
     }
 }
