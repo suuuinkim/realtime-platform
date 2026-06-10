@@ -1,0 +1,56 @@
+﻿@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color: #111827;
+  background: #fffdf7;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+html,
+body,
+#root {
+  min-width: 320px;
+  min-height: 100vh;
+  margin: 0;
+  background:
+    radial-gradient(circle at top left, #fff1c8 0%, transparent 28%),
+    radial-gradient(circle at top right, #ddebff 0%, transparent 30%),
+    radial-gradient(circle at bottom left, #ffe0d6 0%, transparent 26%),
+    linear-gradient(135deg, #fffdf7 0%, #f7faff 45%, #fff6f0 100%);
+}
+
+button,
+input {
+  font: inherit;
+}
+
+@layer components {
+  .page-shell {
+    @apply mx-auto w-full max-w-7xl px-4 py-7 sm:px-6 lg:px-8;
+  }
+
+  .premium-card {
+    @apply rounded-3xl bg-white/80 shadow-[0_20px_60px_rgba(15,23,42,0.08)] ring-1 ring-white/70 backdrop-blur-md;
+  }
+
+  .primary-button {
+    @apply inline-flex h-14 items-center justify-center rounded-2xl bg-gradient-to-r from-indigo-500 to-violet-500 px-6 text-base font-extrabold text-white shadow-[0_14px_30px_rgba(79,70,229,0.22)] transition hover:-translate-y-0.5 hover:from-indigo-400 hover:to-violet-400 hover:shadow-[0_18px_38px_rgba(79,70,229,0.28)] disabled:cursor-not-allowed disabled:bg-none disabled:bg-slate-200 disabled:text-slate-400 disabled:shadow-none disabled:hover:translate-y-0;
+  }
+
+  .secondary-button {
+    @apply inline-flex h-12 items-center justify-center rounded-2xl bg-white/80 px-5 text-sm font-extrabold text-[#111827] shadow-[0_10px_24px_rgba(15,23,42,0.05)] ring-1 ring-[rgba(17,24,39,0.08)] backdrop-blur transition hover:-translate-y-0.5 hover:bg-white;
+  }
+
+  .section-title {
+    @apply text-2xl font-black tracking-tight text-[#111827];
+  }
+
+  .muted {
+    @apply text-[#6B7280];
+  }
+}
