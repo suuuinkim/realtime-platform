@@ -1,404 +1,235 @@
-# Realtime Platform                                                                                                                                                                                                              
-                                                                                                                                                                                                                                      
-  Redis 기반의 실시간 소셜 플랫폼 백엔드 API입니다.                                                                                                                                                                                   
-  게시글 조회수, 좋아요, 댓글 기능과 함께 가중치 기반 랭킹 시스템 및 WebSocket 실시간 알림을 구현했습니다.                                                                                                                            
-
-  ---
-                                                                                                                                                                                                                                      
-  ## 기술 스택                                                                                                                                                                                                                        
-
-  | 분류 | 기술 |
-  |------|------|
-  | Language | Java 17 |
-  | Framework | Spring Boot 4.0.6 |
-  | Security | Spring Security + JWT (JJWT 0.12.6) |
-  | Cache / DB | Redis 7 (Alpine) |
-  | Real-time | WebSocket (STOMP + SockJS) |
-  | Messaging | Redis Pub/Sub |
-  | Build | Gradle |
-  | DevOps | Docker Compose |
-  | Util | Lombok, Jackson, BCrypt |
-
-  ---
-
-  ## 주요 기능
-
-  - **JWT 인증** — 로그인 시 Access Token (1시간) + Refresh Token (14일) 발급, Stateless 방식
-  - **조회수 트래킹** — 게시글 조회 시 Redis에 조회수 자동 증가
-  - **좋아요 시스템** — 사용자별 중복 좋아요 방지, TTL 기반 만료 처리
-  - **댓글 시스템** — 댓글 수 집계 및 실시간 이벤트 발행
-  - **가중치 랭킹** — Redis Sorted Set 기반 실시간 랭킹 (조회 +1점, 좋아요 +3점)
-  - **실시간 알림** — Redis Pub/Sub → WebSocket(STOMP) 연동으로 댓글 알림 브로드캐스트
-
-  ---
-
-  ## 아키텍처
-
-  ```text                                                                                                                                                                                                                             
-  ┌─────────────────────────────────────────────────────────┐
-  │                      REST Client                         │
-  └─────────────────────────┬───────────────────────────────┘
-                            │  HTTP + Bearer Token
-                            ▼
-                ┌───────────────────────┐
-                │       JWT Filter      │
-                └───────────┬───────────┘
-                            │
-                            ▼
-                ┌───────────────────────┐
-                │      Controller       │
-                │ Post·Like·Comment·    │
-                │ Ranking·Auth·Redis    │
-                └───────────┬───────────┘
-                            │
-                            ▼
-                ┌───────────────────────┐
-                │        Service        │
-                └────┬─────────────┬────┘
-                     │             │
-         ┌───────────▼──────┐  ┌───▼──────────────────┐
-         │      Redis        │ │ NotificationPublisher│
-         │                   │ └───────────┬──────────┘
-         │  String           │             │
-         │  ├ post:views     │             │ channel:post:{id}
-         │  ├ post:likes     │             ▼
-         │  └ post:comments  │  ┌───────────────────────┐
-         │                   │  │    Redis  Pub/Sub     │
-         │  Sorted Set       │  └───────────┬───────────┘
-         │  └ ranking:posts  │              │
-         └───────────────────┘              ▼
-                                 ┌───────────────────────┐
-                                 │ NotificationSubscriber│
-                                 └───────────┬───────────┘
-                                             │
-                                             ▼
-                                 ┌───────────────────────┐
-                                 │   WebSocket Broker    │
-                                 │  /topic/post/{postId} │
-                                 └───────────┬───────────┘
-                                             │
-                                 ┌───────────▼───────────┐
-                                 │    WebSocket Client   │
-                                 └───────────────────────┘
-  ```
-
-  **실시간 알림 흐름**
-  1. 댓글 작성 API 호출
-  2. `CommentService` → Redis 채널 `channel:post:{postId}` 에 이벤트 발행
-  3. `NotificationSubscriber` 수신 → `SimpMessagingTemplate` 으로 전달
-  4. WebSocket 구독 클라이언트에게 실시간 전송
-
-  ---
-
-  ## 실행 방법
-
-  ```bash
-  # 1. Redis 컨테이너 실행
-  docker-compose up -d
-
-  # 2. 애플리케이션 실행
-  ./gradlew bootRun
-
-  ▎ 기본 접속: http://localhost:8080
-  ▎ Redis: localhost:6379
+# ClassQueue
+
+강의 신청이 몰리는 상황을 가정한 실시간 선착순 대기열 플랫폼입니다.
+
+Redis로 강의별 정원, 대기열, 신청권 TTL을 관리하고, Kafka로 신청 상태 변경 이벤트를 발행합니다. 클라이언트는 WebSocket을 통해 강의별 대기열 변화와 사용자별 신청 상태를 실시간으로 받을 수 있습니다.
+
+## Tech Stack
+
+| Area | Tech |
+| --- | --- |
+| Backend | Java 17, Spring Boot 4.0.6 |
+| Frontend | React 19, Vite, TypeScript |
+| Cache / Queue State | Redis 7 |
+| Messaging | Kafka |
+| Real-time | WebSocket, STOMP, SockJS |
+| Security | Spring Security, JWT |
+| Build | Gradle, npm |
+| DevOps | Docker Compose |
+
+## Main Features
+
+- 강의별 선착순 신청 요청
+- 정원 여유가 있으면 5분짜리 신청권 발급
+- 정원이 가득 차면 Redis Sorted Set 기반 대기열 진입
+- 대기 순번 조회
+- 신청권 확정 처리
+- 확정/신청권/대기열 진입 이벤트 Kafka 발행
+- Kafka Consumer가 WebSocket으로 실시간 알림 전송
+- Redis TTL과 활성 신청권 추적으로 신청권 과발급 방지
+
+## Architecture
+
+```text
+Client
+  |
+  | REST
+  v
+Spring Boot API
+  |
+  | 신청 요청 / 확정 / 순번 조회
+  v
+CourseApplicationService
+  |
+  | Redis
+  | - course:{courseId}:confirmed
+  | - course:{courseId}:queue
+  | - course:{courseId}:hold:{userId}
+  | - course:{courseId}:holds
+  |
+  | Kafka publish
+  v
+application-events topic
+  |
+  | Kafka consume
+  v
+ApplicationEventConsumer
+  |
+  | WebSocket
+  v
+/topic/courses/{courseId}
+/topic/users/{userId}/applications
+```
+
+## Event Flow
+
+1. 사용자가 강의 신청 API를 호출합니다.
+2. 정원에 여유가 있으면 `HOLDING` 상태의 신청권을 발급합니다.
+3. 정원이 없으면 사용자를 Redis 대기열에 넣고 `WAITING` 상태를 반환합니다.
+4. 사용자가 신청권을 확정하면 `CONFIRMED` 상태로 저장합니다.
+5. 각 상태 변경은 Kafka `application-events` 토픽으로 발행됩니다.
+6. Kafka Consumer가 이벤트를 받아 WebSocket 채널로 전달합니다.
+
+## Redis Key Design
+
+| Key | Type | Description |
+| --- | --- | --- |
+| `course:{courseId}:capacity` | String | 강의 정원. 없으면 기본값 20 |
+| `course:{courseId}:confirmed` | Set | 신청 확정 사용자 목록 |
+| `course:{courseId}:queue` | Sorted Set | 대기열. score는 진입 시각 |
+| `course:{courseId}:hold:{userId}` | String + TTL | 사용자별 신청권. 기본 TTL 5분 |
+| `course:{courseId}:holds` | Sorted Set | 활성 신청권 목록. score는 만료 시각 |
+
+## Kafka
+
+| Topic | Producer | Consumer | Purpose |
+| --- | --- | --- | --- |
+| `application-events` | `ApplicationEventProducer` | `ApplicationEventConsumer` | 신청 상태 변경 이벤트 전달 |
+
+Event payload:
+
+```json
+{
+  "eventType": "APPLICATION_HOLD_GRANTED",
+  "courseId": "spring-boot",
+  "userId": "user1",
+  "applicationId": "spring-boot:user1",
+  "status": "HOLDING",
+  "position": null,
+  "message": "Application hold granted"
+}
+```
 
-  ---
-  Redis 키 설계
+## API
 
-  ┌──────────────────────────────────┬────────────┬───────────────────────────────┐
-  │           Key Pattern            │    타입    │             설명              │
-  ├──────────────────────────────────┼────────────┼───────────────────────────────┤
-  │ post:views:{postId}              │ String     │ 게시글 조회수                 │
-  ├──────────────────────────────────┼────────────┼───────────────────────────────┤
-  │ post:likes:{postId}              │ String     │ 게시글 좋아요 수              │
-  ├──────────────────────────────────┼────────────┼───────────────────────────────┤
-  │ post:comments:{postId}           │ String     │ 게시글 댓글 수                │
-  ├──────────────────────────────────┼────────────┼───────────────────────────────┤
-  │ like:post:{postId}:user:{userId} │ String     │ 사용자 좋아요 여부 (TTL: 1일) │
-  ├──────────────────────────────────┼────────────┼───────────────────────────────┤
-  │ ranking:posts                    │ Sorted Set │ 게시글 랭킹 점수              │
-  └──────────────────────────────────┴────────────┴───────────────────────────────┘
+Base URL:
 
-  ---
-  API 명세
+```text
+http://localhost:8080
+```
 
-  공통
+### 신청 요청
 
-  - Base URL: http://localhost:8080
-  - 인증: Authorization: Bearer {accessToken} 헤더 필수 (로그인 제외)
-  - Content-Type: application/json
+```http
+POST /api/courses/{courseId}/applications?userId={userId}
+```
 
-  ---
-  인증 (Auth)
+정원 여유가 있으면 `HOLDING`, 정원이 없으면 `WAITING`을 반환합니다.
 
-  로그인
+### 신청 확정
 
-  POST /api/v1/login
+```http
+POST /api/courses/{courseId}/applications/confirm?userId={userId}
+```
 
-  Request Body
-  {
-    "loginId": "admin",
-    "password": "1234"
-  }
+활성 신청권이 있을 때 확정합니다. 신청권이 없거나 만료됐으면 `EXPIRED`를 반환합니다.
 
-  Response
-  {
-    "accessToken": "eyJ...",
-    "refreshToken": "eyJ..."
-  }
+### 대기열 승급
 
-  ---
-  게시글 조회수 (Post)
+```http
+POST /api/courses/{courseId}/applications/queue/advance
+```
 
-  게시글 조회 (조회수 +1)
+정원 여유가 생겼을 때 대기열 첫 번째 사용자에게 신청권을 발급합니다.
 
-  GET /api/posts/{postId}
+### 대기 순번 조회
 
-  Response
-  {
-    "postId": 1,
-    "viewCount": 42
-  }
+```http
+GET /api/courses/{courseId}/applications/queue/position?userId={userId}
+```
 
-  조회수 확인 (증가 없음)
+Response example:
 
-  GET /api/posts/{postId}/views
+```json
+{
+  "courseId": "spring-boot",
+  "userId": "user1",
+  "position": 3,
+  "waitingCount": 42
+}
+```
 
-  Response
-  {
-    "postId": 1,
-    "viewCount": 42
-  }
+## WebSocket
 
-  조회수 초기화 (테스트용)
+Endpoint:
 
-  DELETE /api/posts/{postId}/views
+```text
+/ws
+```
 
-  Response
-  {
-    "postId": 1,
-    "status": "초기화됨"
-  }
+Subscribe channels:
 
-  ---
-  좋아요 (Like)
+```text
+/topic/courses/{courseId}
+/topic/users/{userId}/applications
+```
 
-  좋아요 추가
+## Run
 
-  POST /api/posts/{postId}/likes?userId={userId}
+### Infrastructure
 
-  Response
-  {
-    "postId": 1,
-    "userId": "user1",
-    "message": "좋아요가 추가되었습니다.",
-    "likeCount": 10
-  }
+```bash
+docker compose up -d
+```
 
-  좋아요 취소
+Starts:
 
-  DELETE /api/posts/{postId}/likes?userId={userId}
+- Redis: `localhost:6379`
+- Kafka: `localhost:9092`
 
-  Response
-  {
-    "postId": 1,
-    "userId": "user1",
-    "message": "좋아요가 취소되었습니다.",
-    "likeCount": 9
-  }
+### Backend
 
-  좋아요 수 조회
+```bash
+./gradlew bootRun
+```
 
-  GET /api/posts/{postId}/likes
+If Windows uses an older `JAVA_HOME`, set JDK 17 or later before running:
 
-  Response
-  {
-    "postId": 1,
-    "likeCount": 10
-  }
+```powershell
+$env:JAVA_HOME='C:\Program Files\Java\jdk-21.0.10'
+$env:Path="$env:JAVA_HOME\bin;$env:Path"
+.\gradlew.bat bootRun
+```
 
-  좋아요 여부 확인
+### Frontend
 
-  GET /api/posts/{postId}/likes/check?userId={userId}
+```bash
+cd frontend
+npm install
+npm run dev
+```
 
-  Response
-  {
-    "postId": 1,
-    "userId": "user1",
-    "hasLiked": true
-  }
+## Verification
 
-  ---
-  댓글 (Comment)
+Compile:
 
-  댓글 작성 (실시간 알림 발행)
+```bash
+./gradlew compileJava
+```
 
-  POST /api/posts/{postId}/comments?userId={userId}&content={content}
+Test:
 
-  Response
-  {
-    "postId": 1,
-    "userId": "user1",
-    "content": "댓글 내용",
-    "commentCount": 5
-  }
+```bash
+./gradlew test
+```
 
-  ▎ 댓글 작성 시 WebSocket 채널 /topic/post/{postId} 로 실시간 알림 전송
+The context load test requires Redis to be running because the Redis listener starts during application boot.
 
-  댓글 수 조회
+## Project Structure
 
-  GET /api/posts/{postId}/comments/count
-
-  Response
-  {
-    "postId": 1,
-    "commentCount": 5
-  }
-
-  ---
-  랭킹 (Ranking)
-
-  상위 게시글 랭킹 조회
-
-  GET /api/ranking/posts?count=10
-
-  Query Params
-
-  ┌──────────┬──────┬────────┬───────────────────────┐
-  │ 파라미터 │ 타입 │ 기본값 │         설명          │
-  ├──────────┼──────┼────────┼───────────────────────┤
-  │ count    │ int  │ 10     │ 조회할 상위 게시글 수 │
-  └──────────┴──────┴────────┴───────────────────────┘
-
-  Response
-  [
-    { "rank": 1, "postId": "5", "score": 35.0 },
-    { "rank": 2, "postId": "2", "score": 22.0 },
-    { "rank": 3, "postId": "8", "score": 18.0 }
-  ]
-
-  랭킹 점수 계산
-
-  ┌─────────────┬──────┐
-  │    행동     │ 점수 │
-  ├─────────────┼──────┤
-  │ 조회        │ +1.0 │
-  ├─────────────┼──────┤
-  │ 좋아요      │ +3.0 │
-  ├─────────────┼──────┤
-  │ 좋아요 취소 │ -3.0 │
-  └─────────────┴──────┘
-
-  특정 게시글 랭킹 조회
-
-  GET /api/ranking/posts/{postId}
-
-  Response
-  {
-    "postId": 5,
-    "rank": 1,
-    "score": 35.0
-  }
-
-  ---
-  Redis 테스트 (Redis)
-
-  ▎ 개발/테스트 목적 엔드포인트
-
-  키-값 저장
-
-  POST /api/redis/set?key={key}&value={value}&ttl={ttl}
-
-  ┌──────────┬────────┬────────────────┐
-  │ 파라미터 │ 기본값 │      설명      │
-  ├──────────┼────────┼────────────────┤
-  │ ttl      │ 30     │ 만료 시간 (초) │
-  └──────────┴────────┴────────────────┘
-
-  Response
-  {
-    "key": "test:key",
-    "value": "hello",
-    "ttl": 30
-  }
-
-  값 조회
-
-  GET /api/redis/get?key={key}
-
-  Response
-  {
-    "key": "test:key",
-    "value": "hello"
-  }
-
-  TTL 확인
-
-  GET /api/redis/ttl?key={key}
-
-  Response
-  {
-    "key": "test:key",
-    "ttl": 25
-  }
-
-  ▎ ttl: -1 = 만료 없음, ttl: -2 = 키 없음
-
-  키 삭제
-
-  DELETE /api/redis/delete?key={key}
-
-  Response
-  {
-    "key": "test:key",
-    "status": "삭제됨"
-  }
-
-  ---
-  WebSocket 연결
-
-  엔드포인트: ws://localhost:8080/ws (SockJS 지원)
-
-  구독 채널:
-  /topic/post/{postId}
-
-  수신 메시지 형식:
-  {
-    "type": "COMMENT",
-    "postId": 1,
-    "userId": "user1",
-    "content": "새 댓글이 달렸습니다."
-  }
-
-  ---
-  프로젝트 구조
-
-  src/main/java/com/practice/realtimeplatform/
-  ├── config/
-  │   ├── RedisConfig.java         # Redis 템플릿 & Pub/Sub 리스너 설정
-  │   ├── SecurityConfig.java      # Spring Security & JWT 필터 체인
-  │   └── WebSocketConfig.java     # STOMP WebSocket 엔드포인트 설정
-  ├── controller/
-  │   ├── AuthController.java
-  │   ├── PostController.java
-  │   ├── LikeController.java
-  │   ├── CommentController.java
-  │   ├── RankingController.java
-  │   └── RedisController.java
-  ├── service/
-  │   ├── AuthService.java
-  │   ├── PostService.java
-  │   ├── LikeService.java
-  │   ├── CommentService.java
-  │   ├── RankingService.java
-  ├── pubsub/
-  │   ├── NotificationEvent.java
-  │   ├── NotificationPublisher.java
-  │   └── NotificationSubscriber.java
-  ├── filter/
-  │   └── JwtFilter.java
-  ├── dto/
-  │   ├── LoginRequestDTO.java
-  │   └── LoginResponseDTO.java
-  └── util/
-      └── JwtUtil.java
+```text
+src/main/java/com/practice/realtimeplatform
+  application/
+    controller/       # Course application APIs
+    dto/              # Application responses
+    event/            # Kafka event payload
+    service/          # Queue and application business logic
+  global/
+    config/           # Kafka, Redis, Security, WebSocket config
+    kafka/            # Application event producer/consumer
+    redis/            # Redis utility API and service
+    security/         # JWT filter/util
+  post/               # Legacy post/like/comment/ranking APIs
+frontend/
+  src/                # ClassQueue React UI
+```
