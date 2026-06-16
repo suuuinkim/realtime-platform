@@ -36,6 +36,9 @@ out/
 ### VS Code ###
 .vscode/
 
+### Local AI tooling ###
+.claude/
+
 ### Frontend ###
 node_modules/
 frontend/node_modules/
