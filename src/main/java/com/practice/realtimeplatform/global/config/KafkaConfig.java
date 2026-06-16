@@ -24,8 +24,8 @@ public class KafkaConfig {
     private String bootstrapServers;
 
     @Bean
-    public NewTopic likeEventsTopic() {
-        return TopicBuilder.name("like-events")
+    public NewTopic applicationEventsTopic() {
+        return TopicBuilder.name("application-events")
                 .partitions(3)
                 .replicas(1)
                 .build();

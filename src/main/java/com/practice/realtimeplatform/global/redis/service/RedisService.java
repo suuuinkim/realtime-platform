@@ -60,6 +60,45 @@ public class RedisService {
         redisTemplate.opsForZSet().incrementScore(key, member, delta);
     }
 
+    public boolean addToZSet(String key, String member, double score) {
+        Boolean result = redisTemplate.opsForZSet().add(key, member, score);
+        return Boolean.TRUE.equals(result);
+    }
+
+    public void removeFromZSet(String key, String member) {
+        redisTemplate.opsForZSet().remove(key, member);
+    }
+
+    public void removeZSetRangeByScore(String key, double min, double max) {
+        redisTemplate.opsForZSet().removeRangeByScore(key, min, max);
+    }
+
+    public Long getZSetRank(String key, String member) {
+        return redisTemplate.opsForZSet().rank(key, member);
+    }
+
+    public Long getZSetSize(String key) {
+        return redisTemplate.opsForZSet().zCard(key);
+    }
+
+    public Set<String> getZSetRange(String key, long start, long end) {
+        return redisTemplate.opsForZSet().range(key, start, end);
+    }
+
+    public boolean addToSet(String key, String member) {
+        Long result = redisTemplate.opsForSet().add(key, member);
+        return result != null && result > 0;
+    }
+
+    public boolean isSetMember(String key, String member) {
+        Boolean result = redisTemplate.opsForSet().isMember(key, member);
+        return Boolean.TRUE.equals(result);
+    }
+
+    public Long getSetSize(String key) {
+        return redisTemplate.opsForSet().size(key);
+    }
+
     // Sorted Set: ?곸쐞 N媛??대┝李⑥닚 議고쉶 (?먯닔 ?ы븿)
     public Set<ZSetOperations.TypedTuple<String>> getTopRanking(String key, long count) {
         return redisTemplate.opsForZSet().reverseRangeWithScores(key, 0, count - 1);
