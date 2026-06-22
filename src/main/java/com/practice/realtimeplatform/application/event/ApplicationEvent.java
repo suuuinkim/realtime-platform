@@ -9,6 +9,7 @@ public record ApplicationEvent(
         String applicationId,
         ApplicationStatus status,
         Long position,
-        String message
+        String message,
+        Long holdTtlSeconds
 ) {
 }

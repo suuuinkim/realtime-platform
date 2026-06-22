@@ -1,8 +1,10 @@
 import { Link } from 'react-router-dom';
 import StatusBadge from '../components/StatusBadge';
-import { applications, findClass } from '../data/mockClasses';
+import { findClass } from '../data/mockClasses';
+import { loadApplications } from '../utils/applicationStorage';
 
 export default function MyApplications() {
+  const applications = loadApplications();
   const confirmed = applications.filter((item) => item.status === 'CONFIRMED').length;
   const waiting = applications.filter((item) => item.status === 'WAITING' || item.status === 'HOLDING').length;
   const expired = applications.filter((item) => item.status === 'EXPIRED').length;
@@ -21,17 +23,29 @@ export default function MyApplications() {
       </section>
 
       <section className="grid gap-4">
+        {applications.length === 0 && (
+          <p className="rounded-3xl bg-white/70 p-8 text-center text-sm font-bold text-[#6B7280]">
+            신청 내역이 없습니다.
+          </p>
+        )}
         {applications.map((application) => {
           const item = findClass(application.classId);
           return (
-            <article key={application.id} className="premium-card grid gap-4 p-5 md:grid-cols-[1fr_auto] md:items-center">
+            <article
+              key={application.id}
+              className="premium-card grid gap-4 p-5 md:grid-cols-[1fr_auto] md:items-center"
+            >
               <div>
                 <StatusBadge status={application.status} />
                 <h2 className="mt-3 text-xl font-black text-[#111827]">{item.title}</h2>
                 <p className="mt-2 text-sm font-bold text-[#6B7280]">{item.schedule}</p>
-                <p className="mt-2 text-sm font-extrabold text-indigo-600">{application.appliedAt} · {application.meta}</p>
+                <p className="mt-2 text-sm font-extrabold text-indigo-600">
+                  {application.appliedAt} · {application.meta}
+                </p>
               </div>
-              <Link to={`/classes/${item.id}`} className="secondary-button">상세 보기</Link>
+              <Link to={`/classes/${item.id}`} className="secondary-button">
+                상세 보기
+              </Link>
             </article>
           );
         })}
@@ -40,7 +54,15 @@ export default function MyApplications() {
   );
 }
 
-function Summary({ label, value, tone }: { label: string; value: number; tone: 'emerald' | 'indigo' | 'slate' }) {
+function Summary({
+  label,
+  value,
+  tone,
+}: {
+  label: string;
+  value: number;
+  tone: 'emerald' | 'indigo' | 'slate';
+}) {
   const tones = {
     emerald: 'text-emerald-600 bg-emerald-50/70 ring-emerald-100',
     indigo: 'text-indigo-600 bg-indigo-50/70 ring-indigo-100',

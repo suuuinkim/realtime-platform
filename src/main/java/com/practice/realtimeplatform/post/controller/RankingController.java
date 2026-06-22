@@ -16,7 +16,7 @@ public class RankingController {
 
     private final RankingService rankingService;
 
-    // ?멸린 寃뚯떆湲 TOP N 議고쉶
+    // 인기 게시글 TOP N 조회
     @GetMapping("/posts")
     public ResponseEntity<List<RankingPostResponse>> getTopPosts(
             @RequestParam(defaultValue = "10") int count
@@ -24,7 +24,7 @@ public class RankingController {
         return ResponseEntity.ok(rankingService.getTopPosts(count));
     }
 
-    // ?뱀젙 寃뚯떆湲???꾩옱 ?쒖쐞 議고쉶
+    // 특정 게시글의 현재 순위 조회
     @GetMapping("/posts/{postId}")
     public ResponseEntity<PostRankResponse> getPostRank(@PathVariable Long postId) {
         return ResponseEntity.ok(rankingService.getPostRank(postId));

@@ -178,7 +178,8 @@ public class CourseApplicationService {
                 response.applicationId(),
                 response.status(),
                 response.position(),
-                response.message()
+                response.message(),
+                response.holdTtlSeconds()
         ));
     }
 

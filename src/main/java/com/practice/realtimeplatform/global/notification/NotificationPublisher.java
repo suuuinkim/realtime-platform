@@ -20,9 +20,9 @@ public class NotificationPublisher {
         try {
             String message = objectMapper.writeValueAsString(event);
             redisTemplate.convertAndSend(channel, message);
-            log.info("[Pub/Sub 諛쒗뻾] channel={}, type={}", channel, event.getType());
+            log.info("[Pub/Sub 발행] channel={}, type={}", channel, event.getType());
         } catch (JacksonException e) {
-            log.error("[Pub/Sub 諛쒗뻾 ?ㅽ뙣] postId={}", postId, e);
+            log.error("[Pub/Sub 발행 실패] postId={}", postId, e);
         }
     }
 }

@@ -1,6 +1,5 @@
 package com.practice.realtimeplatform.global.security;
 
-import com.practice.realtimeplatform.global.security.JwtUtil;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -26,20 +25,20 @@ public class JwtFilter extends OncePerRequestFilter {
     protected void doFilterInternal(HttpServletRequest request,
                                     HttpServletResponse response,
                                     FilterChain filterChain) throws ServletException, IOException {
-        // 濡쒖쭅 ?묒꽦
+        // 헤더 추출
         String authHeader = request.getHeader("Authorization");
 
         if (authHeader == null || !authHeader.startsWith("Bearer ")) {
-            filterChain.doFilter(request, response); // ?좏겙 ?놁쑝硫??듦낵
+            filterChain.doFilter(request, response); // 토큰 없으면 통과
             return;
         }
 
         String token = authHeader.substring(7);
 
         if (jwtUtil.validateToken(token)) {
-            // username 爰쇰궡湲?
+            // username 추출
             String username = jwtUtil.getUsernameFromToken(token);
-            // securityContext???깅줉
+            // SecurityContext에 등록
             UsernamePasswordAuthenticationToken authenticationToken =
                     new UsernamePasswordAuthenticationToken(username, null, Collections.emptyList());
 
@@ -47,6 +46,5 @@ public class JwtFilter extends OncePerRequestFilter {
         }
 
         filterChain.doFilter(request, response);
-
     }
 }

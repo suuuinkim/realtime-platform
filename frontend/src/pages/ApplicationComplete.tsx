@@ -1,12 +1,19 @@
 import { BellRing, CheckCircle2 } from 'lucide-react';
-import { Link, useParams } from 'react-router-dom';
+import { Link, useLocation, useParams } from 'react-router-dom';
 import StatusBadge from '../components/StatusBadge';
-import { findApplication, findClass } from '../data/mockClasses';
+import { findClass } from '../data/mockClasses';
+
+interface LocationState {
+  courseId: string;
+}
 
 export default function ApplicationComplete() {
   const { applicationId } = useParams();
-  const application = findApplication(applicationId);
-  const item = findClass(application.classId);
+  const location = useLocation();
+  const state = location.state as LocationState | null;
+  const courseId = state?.courseId ?? applicationId?.split(':')[0] ?? '';
+  const item = findClass(courseId);
+  const appliedAt = new Date().toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' });
 
   return (
     <div className="mx-auto max-w-3xl space-y-6">
@@ -33,7 +40,7 @@ export default function ApplicationComplete() {
           <h2 className="mt-2 text-2xl font-black text-[#111827]">{item.title}</h2>
           <div className="mt-5 grid gap-3 md:grid-cols-2">
             <Info label="일정" value={item.schedule} />
-            <Info label="신청 완료 시간" value={application.appliedAt} />
+            <Info label="신청 완료 시간" value={appliedAt} />
           </div>
         </div>
       </section>

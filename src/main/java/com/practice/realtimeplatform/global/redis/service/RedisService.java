@@ -23,7 +23,7 @@ public class RedisService {
         return redisTemplate.opsForValue().get(key);
     }
 
-    // ?⑥? TTL(珥? 諛섑솚. -1=留뚮즺?놁쓬, -2=?ㅼ뾾??
+    // 잔여 TTL(초) 반환. -1=만료없음, -2=키없음
     public Long getTtl(String key) {
         return redisTemplate.getExpire(key, TimeUnit.SECONDS);
     }
@@ -45,7 +45,7 @@ public class RedisService {
         return value == null ? 0L : Long.parseLong(value);
     }
 
-    // SETNX: ?ㅺ? ?놁쓣 ?뚮쭔 ????깃났(true), ?대? ?덉쑝硫??ㅽ뙣(false)
+    // SETNX: 키가 없을 때만 저장 성공(true), 이미 있으면 실패(false)
     public boolean setIfAbsent(String key, String value, Duration ttl) {
         Boolean result = redisTemplate.opsForValue().setIfAbsent(key, value, ttl);
         return Boolean.TRUE.equals(result);
@@ -55,7 +55,7 @@ public class RedisService {
         return Boolean.TRUE.equals(redisTemplate.hasKey(key));
     }
 
-    // Sorted Set: ?먯닔 利앷? (ZINCRBY)
+    // Sorted Set: 점수 증가 (ZINCRBY)
     public void incrementZScore(String key, String member, double delta) {
         redisTemplate.opsForZSet().incrementScore(key, member, delta);
     }
@@ -99,17 +99,17 @@ public class RedisService {
         return redisTemplate.opsForSet().size(key);
     }
 
-    // Sorted Set: ?곸쐞 N媛??대┝李⑥닚 議고쉶 (?먯닔 ?ы븿)
+    // Sorted Set: 상위 N개 내림차순 조회 (점수 포함)
     public Set<ZSetOperations.TypedTuple<String>> getTopRanking(String key, long count) {
         return redisTemplate.opsForZSet().reverseRangeWithScores(key, 0, count - 1);
     }
 
-    // Sorted Set: ?뱀젙 硫ㅻ쾭???쒖쐞 (0-based, ?믪? ?먯닔 = ??? ?몃뜳??
+    // Sorted Set: 특정 멤버의 순위 (0-based, 높은 점수 = 낮은 순위)
     public Long getRank(String key, String member) {
         return redisTemplate.opsForZSet().reverseRank(key, member);
     }
 
-    // Sorted Set: ?뱀젙 硫ㅻ쾭???먯닔
+    // Sorted Set: 특정 멤버의 점수
     public Double getScore(String key, String member) {
         return redisTemplate.opsForZSet().score(key, member);
     }

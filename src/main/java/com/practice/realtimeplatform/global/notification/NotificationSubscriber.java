@@ -18,14 +18,14 @@ public class NotificationSubscriber {
     public void onMessage(String message, String channel) {
         try {
             NotificationEvent event = objectMapper.readValue(message, NotificationEvent.class);
-            log.info("[Pub/Sub ?섏떊] channel={} | type={} | postId={} | user={}",
+            log.info("[Pub/Sub 수신] channel={} | type={} | postId={} | user={}",
                     channel, event.getType(), event.getPostId(), event.getUserId());
 
             messagingTemplate.convertAndSend("/topic/post/" + event.getPostId(), event);
-            log.info("[WebSocket ?꾩넚] /topic/post/{}", event.getPostId());
+            log.info("[WebSocket 전송] /topic/post/{}", event.getPostId());
 
         } catch (JacksonException e) {
-            log.error("[Pub/Sub ?섏떊 ?ㅽ뙣] channel={}, raw={}", channel, message);
+            log.error("[Pub/Sub 수신 실패] channel={}, raw={}", channel, message);
         }
     }
 }

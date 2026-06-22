@@ -8,7 +8,7 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @AllArgsConstructor
 public class NotificationEvent {
-    private String type;    // "COMMENT", "LIKE" ??
+    private String type;    // "COMMENT", "LIKE" 등
     private Long postId;
     private String userId;
     private String content;

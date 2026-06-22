@@ -1,10 +1,43 @@
 import { Clock, Users } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { requestApplication } from '../api/applicationApi';
+import { useAuth } from '../context/AuthContext';
 import type { ClassItem } from '../data/mockClasses';
+import { saveApplication } from '../utils/applicationStorage';
 import StatusBadge from './StatusBadge';
 
 export default function ApplicationPanel({ item }: { item: ClassItem }) {
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+  const { userId } = useAuth();
+  const navigate = useNavigate();
   const seatsLeft = Math.max(0, item.capacity - item.enrolled);
+
+  async function handleEnterQueue() {
+    if (!userId) return;
+    setLoading(true);
+    setError('');
+    try {
+      const response = await requestApplication(item.id, userId);
+      saveApplication(response);
+      if (response.status === 'HOLDING') {
+        navigate(`/apply/${item.id}`, {
+          state: { holdTtlSeconds: response.holdTtlSeconds ?? 300, applicationId: response.applicationId },
+        });
+      } else if (response.status === 'WAITING') {
+        navigate(`/queue/${item.id}`, {
+          state: { position: response.position, waitingCount: response.waitingCount },
+        });
+      } else if (response.status === 'CONFIRMED') {
+        setError('이미 신청이 완료된 수업입니다.');
+      }
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : '오류가 발생했습니다.');
+    } finally {
+      setLoading(false);
+    }
+  }
 
   return (
     <aside className="premium-card sticky top-28 p-6">
@@ -31,7 +64,15 @@ export default function ApplicationPanel({ item }: { item: ClassItem }) {
         </p>
       </div>
 
-      <Link to={`/queue/${item.id}`} className="primary-button mt-6 w-full">대기실 입장하기</Link>
+      {error && <p className="mt-3 text-xs font-bold text-red-500">{error}</p>}
+
+      <button
+        className="primary-button mt-6 w-full disabled:opacity-50"
+        disabled={loading}
+        onClick={handleEnterQueue}
+      >
+        {loading ? '처리 중...' : '대기실 입장하기'}
+      </button>
 
       <div className="mt-5 space-y-2 text-sm font-bold leading-6 text-[#6B7280]">
         <p>내 차례가 오면 5분 동안 신청 기회가 유지됩니다.</p>

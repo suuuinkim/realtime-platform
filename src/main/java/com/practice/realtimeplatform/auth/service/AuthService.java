@@ -29,18 +29,18 @@ public class AuthService {
     }
 
     /**
-     * 濡쒓렇??
+     * 로그인
      * @param loginRequest
      * @return
      * @throws Exception
      */
     public LoginResponseDTO login(LoginRequestDTO loginRequest) throws Exception {
         if (!loginRequest.getLoginId().equals(id)) {
-            throw new Exception("?꾩씠?붽? ?쇱튂?섏? ?딆뒿?덈떎");
+            throw new Exception("아이디가 일치하지 않습니다");
         }
 
         if (!bCryptPasswordEncoder.matches(loginRequest.getPassword(), encodePwd)) {
-            throw new Exception("鍮꾨?踰덊샇媛 ?쇱튂?섏? ?딆뒿?덈떎.");
+            throw new Exception("비밀번호가 일치하지 않습니다.");
         }
 
         String accessToken = jwtUtil.generateAccessToken(id);

@@ -27,7 +27,7 @@ public class RedisController {
     public ResponseEntity<RedisValueResponse> get(@RequestParam String key) {
         String value = redisService.get(key);
         if (value == null) {
-            return ResponseEntity.ok(new RedisValueResponse(key, "null (留뚮즺?섏뿀嫄곕굹 議댁옱?섏? ?딆쓬)"));
+            return ResponseEntity.ok(new RedisValueResponse(key, "null (만료됐거나 존재하지 않음)"));
         }
         return ResponseEntity.ok(new RedisValueResponse(key, value));
     }
@@ -36,9 +36,9 @@ public class RedisController {
     public ResponseEntity<RedisTtlResponse> ttl(@RequestParam String key) {
         Long remaining = redisService.getTtl(key);
         String status = switch (remaining.intValue()) {
-            case -2 -> "?ㅺ? 議댁옱?섏? ?딆쓬";
-            case -1 -> "TTL ?놁쓬 (?곴뎄 ???";
-            default -> remaining + "珥??⑥쓬";
+            case -2 -> "키가 존재하지 않음";
+            case -1 -> "TTL 없음 (영구 키)";
+            default -> remaining + "초 남음";
         };
         return ResponseEntity.ok(new RedisTtlResponse(key, status));
     }

@@ -32,23 +32,17 @@ public class JwtUtil {
         this.secretKey = Keys.hmacShaKeyFor(secret.getBytes(StandardCharsets.UTF_8));
     }
 
-    /**
-     * Access Token ?앹꽦
-     */
+    // Access Token 생성
     public String generateAccessToken(String username) {
         return generateToken(username, accessTokenExpiration);
     }
 
-    /**
-     * Refresh Token ?앹꽦
-     */
+    // Refresh Token 생성
     public String generateRefreshToken(String username) {
         return generateToken(username, refreshTokenExpiration);
     }
 
-    /**
-     * 怨듯넻 ?좏겙 ?앹꽦 硫붿꽌??
-     */
+    // 공통 토큰 생성 메서드
     private String generateToken(String username, long expirationTime) {
         Date now = new Date();
         Date expiryDate = new Date(now.getTime() + expirationTime);
@@ -61,17 +55,13 @@ public class JwtUtil {
                 .compact();
     }
 
-    /**
-     * ?좏겙 寃利?
-     */
+    // 토큰 검증
     public boolean validateToken(String token) {
         try {
             Jwts.parser()
                     .verifyWith(secretKey)
                     .build()
                     .parseSignedClaims(token);
-            // jwt 臾몄옄?댁쓣 ?뚯떛?섍퀬, ?쒕챸??寃利????? payload???ㅼ뼱?덈뒗 claims瑜?爰쇰궡??硫붿꽌??
-
             return true;
         } catch (ExpiredJwtException e) {
             return false;
@@ -80,17 +70,13 @@ public class JwtUtil {
         }
     }
 
-    /**
-     * ?좏겙?먯꽌 username 異붿텧
-     */
+    // 토큰에서 username 추출
     public String getUsernameFromToken(String token) {
         Claims claims = getClaims(token);
         return claims.getSubject();
     }
 
-    /**
-     * Claims 異붿텧
-     */
+    // Claims 추출
     private Claims getClaims(String token) {
         return Jwts.parser()
                 .verifyWith(secretKey)
@@ -98,8 +84,4 @@ public class JwtUtil {
                 .parseSignedClaims(token)
                 .getPayload();
     }
-
-
-
-
 }

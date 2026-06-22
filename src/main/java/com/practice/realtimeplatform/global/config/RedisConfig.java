@@ -31,14 +31,13 @@ public class RedisConfig {
     ) {
         RedisMessageListenerContainer container = new RedisMessageListenerContainer();
         container.setConnectionFactory(factory);
-        // channel:post:* ?⑦꽩??紐⑤뱺 梨꾨꼸 援щ룆
+        // channel:post:* 선택한 모든 채널 구독
         container.addMessageListener(listenerAdapter, new PatternTopic("channel:post:*"));
         return container;
     }
 
     @Bean
     public MessageListenerAdapter listenerAdapter(NotificationSubscriber subscriber) {
-        // NotificationSubscriber.onMessage() 硫붿꽌?쒕줈 ?꾩엫
         return new MessageListenerAdapter(subscriber, "onMessage");
     }
 }
