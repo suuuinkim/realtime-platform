@@ -29,6 +29,6 @@ public class HoldExpiryListener {
         String userId = withoutPrefix.substring(holdIdx + HOLD_KEY_SEGMENT.length());
 
         log.info("[Hold 만료] courseId={}, userId={} → 다음 대기자 승격 시도", courseId, userId);
-        courseApplicationService.advanceQueue(courseId);
+        courseApplicationService.reconcileQueue(courseId);
     }
 }

@@ -1,4 +1,4 @@
-import { apiFetch, buildUrl } from './client';
+import { apiFetch } from './client';
 import type { ApplicationStatus } from '../data/mockClasses';
 
 export interface ApplicationResponse {
@@ -29,16 +29,18 @@ export interface QueuePositionResponse {
   userId: string;
   position: number | null;
   waitingCount: number;
+  status: ApplicationStatus;
+  holdTtlSeconds: number | null;
 }
 
-export function requestApplication(courseId: string, userId: string): Promise<ApplicationResponse> {
-  return apiFetch(buildUrl(`/api/courses/${courseId}/applications`, { userId }), { method: 'POST' });
+export function requestApplication(courseId: string): Promise<ApplicationResponse> {
+  return apiFetch(`/api/courses/${courseId}/applications`, { method: 'POST' });
 }
 
-export function confirmApplication(courseId: string, userId: string): Promise<ApplicationResponse> {
-  return apiFetch(buildUrl(`/api/courses/${courseId}/applications/confirm`, { userId }), { method: 'POST' });
+export function confirmApplication(courseId: string): Promise<ApplicationResponse> {
+  return apiFetch(`/api/courses/${courseId}/applications/confirm`, { method: 'POST' });
 }
 
-export function getQueuePosition(courseId: string, userId: string): Promise<QueuePositionResponse> {
-  return apiFetch(buildUrl(`/api/courses/${courseId}/applications/queue/position`, { userId }));
+export function getQueuePosition(courseId: string): Promise<QueuePositionResponse> {
+  return apiFetch(`/api/courses/${courseId}/applications/queue/position`);
 }

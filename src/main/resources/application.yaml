@@ -10,6 +10,11 @@ spring:
     producer:
       key-serializer: org.apache.kafka.common.serialization.StringSerializer
       value-serializer: org.apache.kafka.common.serialization.StringSerializer
+      acks: all
+      retries: 10
+      properties:
+        enable.idempotence: true
+        max.in.flight.requests.per.connection: 5
     consumer:
       group-id: notification-group
       key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
@@ -17,6 +22,18 @@ spring:
       auto-offset-reset: latest
 
 jwt:
-  secret: 'password-sikim-secret-key-for-jwt-256bits!!'
+  secret: '${JWT_SECRET:local-development-only-secret-key-32-bytes}'
   access-token-expiration: 3600000
   refresh-token-expiration: 1209600000
+
+app:
+  admin:
+    username: '${APP_ADMIN_USERNAME:admin}'
+    password: '${APP_ADMIN_PASSWORD:1234}'
+  cors:
+    allowed-origin: '${APP_ALLOWED_ORIGIN:http://localhost:5173}'
+
+application:
+  outbox:
+    consumer-name: '${OUTBOX_CONSUMER_NAME:realtime-platform-1}'
+    dispatch-delay: 1000

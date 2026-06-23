@@ -34,8 +34,14 @@ export default function QueueRoom() {
     if (!userId || !classId) return;
     if (showSpinner) setRefreshing(true);
     try {
-      const res = await getQueuePosition(classId, userId);
+      const res = await getQueuePosition(classId);
       if (!isMounted.current) return;
+      if (res.status === 'HOLDING') {
+        navigate(`/apply/${classId}`, {
+          state: { holdTtlSeconds: res.holdTtlSeconds ?? 300, applicationId: `${classId}:${userId}` },
+        });
+        return;
+      }
       if (res.position !== null) setPosition(res.position);
       setWaitingCount(res.waitingCount);
     } catch {
@@ -43,7 +49,7 @@ export default function QueueRoom() {
     } finally {
       if (showSpinner) setRefreshing(false);
     }
-  }, [classId, userId]);
+  }, [classId, navigate, userId]);
 
   // 최초 진입 시 position이 없으면 즉시 조회
   useEffect(() => {
@@ -69,17 +75,7 @@ export default function QueueRoom() {
     [classId, navigate],
   );
 
-  // 다른 유저가 HOLDING을 받으면 → 내 순번도 변했으므로 즉시 갱신
-  const handleCourseEvent = useCallback(
-    (event: ApplicationEvent) => {
-      if (event.status === 'HOLDING' && event.userId !== userId) {
-        fetchPosition();
-      }
-    },
-    [fetchPosition, userId],
-  );
-
-  useApplicationSocket(classId!, userId, handleUserEvent, handleCourseEvent);
+  useApplicationSocket(classId!, userId, handleUserEvent);
 
   const progress =
     waitingCount && position ? Math.round((1 - (position - 1) / waitingCount) * 100) : 0;

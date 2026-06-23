@@ -3,12 +3,16 @@ services:
     image: redis:7-alpine
     ports:
       - "6379:6379"
-    command: redis-server --save "" --appendonly no --notify-keyspace-events Ex
+    command: redis-server --appendonly yes --appendfsync everysec --notify-keyspace-events Ex
+    volumes:
+      - redis-data:/data
 
   kafka:
     image: apache/kafka:3.9.0
     ports:
       - "9092:9092"
+    volumes:
+      - kafka-data:/var/lib/kafka/data
     environment:
       KAFKA_NODE_ID: 1
       KAFKA_PROCESS_ROLES: broker,controller
@@ -19,4 +23,9 @@ services:
       KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
       KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+      KAFKA_LOG_DIRS: /var/lib/kafka/data
       CLUSTER_ID: MkU3OEVBNTcwNTJENDM2Qk
+
+volumes:
+  redis-data:
+  kafka-data:

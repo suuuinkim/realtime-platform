@@ -24,7 +24,6 @@ public class ApplicationEventConsumer {
             log.info("[Kafka consumed] type={}, courseId={}, userId={}, status={}",
                     event.eventType(), event.courseId(), event.userId(), event.status());
 
-            messagingTemplate.convertAndSend("/topic/courses/" + event.courseId(), event);
             messagingTemplate.convertAndSend("/topic/users/" + event.userId() + "/applications", event);
         } catch (JacksonException e) {
             log.error("[Kafka consume failed] raw={}", message, e);

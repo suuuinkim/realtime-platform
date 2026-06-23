@@ -19,7 +19,7 @@ export default function ApplicationPanel({ item }: { item: ClassItem }) {
     setLoading(true);
     setError('');
     try {
-      const response = await requestApplication(item.id, userId);
+      const response = await requestApplication(item.id);
       saveApplication(response);
       if (response.status === 'HOLDING') {
         navigate(`/apply/${item.id}`, {

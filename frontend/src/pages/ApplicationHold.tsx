@@ -36,7 +36,7 @@ export default function ApplicationHold() {
     setLoading(true);
     setError('');
     try {
-      const response = await confirmApplication(classId, userId);
+      const response = await confirmApplication(classId);
       saveApplication(response);
       navigate(`/complete/${response.applicationId ?? classId}`, { state: { courseId: classId } });
     } catch (err: unknown) {
